@@ -69,6 +69,19 @@ class FlutterNativeImage {
 
     return new File(file);
   }
+
+  static Future<File> resizeImage(
+      String fileName, int width) async {
+    var file = await _channel.invokeMethod("resizeImage", {
+      'file': fileName,
+      'width': width,
+      'quality': 90,
+    });
+
+    if (file == fileName) return null;
+
+    return new File(file);
+  }
 }
 
 enum ImageOrientation {
