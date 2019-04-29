@@ -2,6 +2,7 @@ package com.example.flutternativeimage;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
 import android.media.ExifInterface;
 import android.util.Log;
 import android.app.Activity;
@@ -169,6 +170,53 @@ public class FlutterNativeImagePlugin implements MethodCallHandler {
   		}
 
   		return;
+    }
+    if(call.method.equals("rotateImage")) {
+      String fileName = call.argument("file");
+      String direction = call.argument("direction");
+      int angle = direction == "left" ? -90 : 90;
+
+      File file = new File(fileName);
+
+      if(!file.exists()) {
+        result.error("file does not exist", fileName, null);
+        return;
+      }
+
+      Bitmap bmp = BitmapFactory.decodeFile(fileName);
+      ByteArrayOutputStream bos = new ByteArrayOutputStream();
+
+      try {
+        Matrix matrix = new Matrix();
+        matrix.postRotate(angle);
+        bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(), bmp.getHeight(), matrix, true);
+      } catch(IllegalArgumentException e) {
+        e.printStackTrace();
+        result.error(e.toString(), fileName, null);
+      }
+
+      bmp.compress(Bitmap.CompressFormat.JPEG, 90, bos);
+
+      try {
+        String outputFileName = File.createTempFile(
+                getFilenameWithoutExtension(file).concat("_rotate" + angle),
+                ".jpg",
+                activity.getExternalCacheDir()
+        ).getPath();
+
+        OutputStream outputStream = new FileOutputStream(outputFileName);
+        bos.writeTo(outputStream);
+
+        result.success(outputFileName);
+      } catch (FileNotFoundException e) {
+        e.printStackTrace();
+        result.error("file does not exist", fileName, null);
+      } catch (IOException e) {
+        e.printStackTrace();
+        result.error("something went wrong", fileName, null);
+      }
+
+      return;
     }
     if (call.method.equals("getPlatformVersion")) {
       result.success("Android " + android.os.Build.VERSION.RELEASE);

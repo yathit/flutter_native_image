@@ -59,6 +59,16 @@ class FlutterNativeImage {
 
     return new File(file);
   }
+
+  static Future<File> rotateImage(
+      String fileName, bool isLeft) async {
+    var file = await _channel.invokeMethod("rotateImage", {
+      'file': fileName,
+      'direction': isLeft ? 'left' : 'right',
+    });
+
+    return new File(file);
+  }
 }
 
 enum ImageOrientation {
