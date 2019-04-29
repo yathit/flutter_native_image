@@ -94,6 +94,77 @@ public class FlutterNativeImagePlugin implements MethodCallHandler {
 
       return;
     }
+    if(call.method.equals("resizeImage")) {
+      String fileName = call.argument("file");
+      int newWidth = (int) call.argument("width");
+      int quality = call.argument("quality");
+
+      File file = new File(fileName);
+
+      if(!file.exists()) {
+        result.error("file does not exist", fileName, null);
+        return;
+      }
+
+      int orientation = ExifInterface.ORIENTATION_UNDEFINED;
+      try {
+        ExifInterface exif = new ExifInterface(fileName);
+        orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_UNDEFINED);
+      } catch(IOException ex) {
+        // EXIF could not be read from the file; ignore
+      }
+
+
+      Bitmap bmp = BitmapFactory.decodeFile(fileName);
+      ByteArrayOutputStream bos = new ByteArrayOutputStream();
+
+      if (bmp.getWidth() == newWidth) {
+        result.success(fileName);
+        return;
+      }
+
+      int newHeight = bmp.getHeight() * newWidth / bmp.getWidth();
+
+      bmp = Bitmap.createScaledBitmap(
+              bmp, newWidth, newHeight, false);
+
+      int angle = orientation == ExifInterface.ORIENTATION_ROTATE_90 ? 90 :
+              orientation == ExifInterface.ORIENTATION_ROTATE_270 ? 270 :
+                      orientation == ExifInterface.ORIENTATION_ROTATE_180 ? 180 : 0;
+      if (angle > 0) {
+        try {
+          Matrix matrix = new Matrix();
+          matrix.postRotate(angle);
+          bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(), bmp.getHeight(), matrix, true);
+        } catch(IllegalArgumentException e) {
+          e.printStackTrace();
+          result.error(e.toString(), fileName, null);
+        }
+      }
+
+      bmp.compress(Bitmap.CompressFormat.JPEG, quality, bos);
+
+      try {
+        String outputFileName = File.createTempFile(
+                getFilenameWithoutExtension(file).concat("_resize"),
+                ".jpg",
+                activity.getExternalCacheDir()
+        ).getPath();
+
+        OutputStream outputStream = new FileOutputStream(outputFileName);
+        bos.writeTo(outputStream);
+
+        result.success(outputFileName);
+      } catch (FileNotFoundException e) {
+        e.printStackTrace();
+        result.error("file does not exist", fileName, null);
+      } catch (IOException e) {
+        e.printStackTrace();
+        result.error("something went wrong", fileName, null);
+      }
+
+      return;
+    }
     if(call.method.equals("getImageProperties")) {
       String fileName = call.argument("file");
       File file = new File(fileName);
@@ -174,7 +245,7 @@ public class FlutterNativeImagePlugin implements MethodCallHandler {
     if(call.method.equals("rotateImage")) {
       String fileName = call.argument("file");
       String direction = call.argument("direction");
-      int angle = direction == "left" ? -90 : 90;
+      int angle = "left".equals(direction) ? 270 : 90;
 
       File file = new File(fileName);
 
@@ -199,7 +270,7 @@ public class FlutterNativeImagePlugin implements MethodCallHandler {
 
       try {
         String outputFileName = File.createTempFile(
-                getFilenameWithoutExtension(file).concat("_rotate" + angle),
+                getFilenameWithoutExtension(file).concat(angle == 90 ? "r" : "l"),
                 ".jpg",
                 activity.getExternalCacheDir()
         ).getPath();
