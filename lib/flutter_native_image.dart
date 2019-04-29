@@ -70,18 +70,32 @@ class FlutterNativeImage {
     return new File(file);
   }
 
-  static Future<File> resizeImage(
-      String fileName, int width) async {
-    var file = await _channel.invokeMethod("resizeImage", {
+  static Future<ResizeResult> resizeImage(
+      String fileName, int width, {String outputFileName}) async {
+    Map map = await _channel.invokeMethod("resizeImage", {
       'file': fileName,
-      'width': width,
+      'maxWidth': width,
+      'output': outputFileName,
       'quality': 90,
     });
 
-    if (file == fileName) return null;
-
-    return new File(file);
+    return new ResizeResult(map);
   }
+}
+
+class ResizeResult {
+  final Map map;
+
+  ResizeResult(this.map);
+
+  int get width => (map['width'] as num).round();
+  int get height => (map['height'] as num).round();
+  String get outputFileName => map['outputFileName'];
+
+  @override
+  String toString() => 'resize[$width x $height] $outputFileName';
+
+
 }
 
 enum ImageOrientation {

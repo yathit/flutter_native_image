@@ -96,8 +96,15 @@ public class FlutterNativeImagePlugin implements MethodCallHandler {
     }
     if(call.method.equals("resizeImage")) {
       String fileName = call.argument("file");
-      int newWidth = (int) call.argument("width");
+      int newWidth = (int) call.argument("maxWidth");
+      String outputFileName = call.argument("output");
       int quality = call.argument("quality");
+
+
+      if(newWidth == 0) {
+        result.error("maxWidth must not be zero", fileName, null);
+        return;
+      }
 
       File file = new File(fileName);
 
@@ -114,12 +121,16 @@ public class FlutterNativeImagePlugin implements MethodCallHandler {
         // EXIF could not be read from the file; ignore
       }
 
-
       Bitmap bmp = BitmapFactory.decodeFile(fileName);
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
 
-      if (bmp.getWidth() == newWidth) {
-        result.success(fileName);
+      HashMap<String, Object> properties = new HashMap<String, Object>();
+      properties.put("outputFileName", fileName);
+      properties.put("width", bmp.getWidth());
+      properties.put("height", bmp.getHeight());
+
+      if (bmp.getWidth() <= newWidth) {
+        result.success(properties);
         return;
       }
 
@@ -144,17 +155,23 @@ public class FlutterNativeImagePlugin implements MethodCallHandler {
 
       bmp.compress(Bitmap.CompressFormat.JPEG, quality, bos);
 
+      properties.put("width", newWidth);
+      properties.put("height", newHeight);
+
       try {
-        String outputFileName = File.createTempFile(
-                getFilenameWithoutExtension(file).concat("_resize"),
-                ".jpg",
-                activity.getExternalCacheDir()
-        ).getPath();
+        if (outputFileName == null || outputFileName.isEmpty()) {
+          outputFileName = File.createTempFile(
+                  getFilenameWithoutExtension(file).concat("_resize"),
+                  ".jpg",
+                  activity.getExternalCacheDir()
+          ).getPath();
+        }
 
         OutputStream outputStream = new FileOutputStream(outputFileName);
         bos.writeTo(outputStream);
 
-        result.success(outputFileName);
+        properties.put("outputFileName", outputFileName);
+        result.success(properties);
       } catch (FileNotFoundException e) {
         e.printStackTrace();
         result.error("file does not exist", fileName, null);
@@ -244,6 +261,7 @@ public class FlutterNativeImagePlugin implements MethodCallHandler {
     }
     if(call.method.equals("rotateImage")) {
       String fileName = call.argument("file");
+      String outputFileName = call.argument("output");
       String direction = call.argument("direction");
       int angle = "left".equals(direction) ? 270 : 90;
 
@@ -269,11 +287,13 @@ public class FlutterNativeImagePlugin implements MethodCallHandler {
       bmp.compress(Bitmap.CompressFormat.JPEG, 90, bos);
 
       try {
-        String outputFileName = File.createTempFile(
-                getFilenameWithoutExtension(file).concat(angle == 90 ? "r" : "l"),
-                ".jpg",
-                activity.getExternalCacheDir()
-        ).getPath();
+        if (outputFileName == null || outputFileName.isEmpty()) {
+          outputFileName = File.createTempFile(
+                  getFilenameWithoutExtension(file).concat(angle == 90 ? "r" : "l"),
+                  ".jpg",
+                  activity.getExternalCacheDir()
+          ).getPath();
+        }
 
         OutputStream outputStream = new FileOutputStream(outputFileName);
         bos.writeTo(outputStream);
