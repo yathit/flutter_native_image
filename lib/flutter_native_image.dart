@@ -79,8 +79,6 @@ class FlutterNativeImage {
       'quality': 90,
     });
 
-    print(map);
-
     final result = new ResizeResult(map);
 
     if (outputFileName != null && result.outputFileName != outputFileName) {
