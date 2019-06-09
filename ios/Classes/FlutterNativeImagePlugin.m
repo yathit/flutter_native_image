@@ -21,6 +21,46 @@
   return normalizedImage;
 }
 
+- (UIImage *)imageRotatedByDegrees:(UIImage*)image deg:(CGFloat)degrees{
+    
+    CGFloat rotation = degrees * M_PI / 180;
+    
+    // Calculate Destination Size
+    CGAffineTransform t = CGAffineTransformMakeRotation(rotation);
+    CGRect sizeRect = (CGRect) {.size = image.size};
+    CGRect destRect = CGRectApplyAffineTransform(sizeRect, t);
+    CGSize destinationSize = destRect.size;
+    
+    // Draw image
+    UIGraphicsBeginImageContext(destinationSize);
+    CGContextRef context = UIGraphicsGetCurrentContext();
+    CGContextTranslateCTM(context, destinationSize.width / 2.0f, destinationSize.height / 2.0f);
+    CGContextRotateCTM(context, rotation);
+    [image drawInRect:CGRectMake(-image.size.width / 2.0f, -image.size.height / 2.0f, image.size.width, image.size.height)];
+    
+    // Save image
+    UIImage *newImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return newImage;
+}
+
+- (UIImage *)scaledImage:(UIImage *)image
+                maxWidth:(CGFloat)maxWidth {
+    double originalWidth = image.size.width;
+    double originalHeight = image.size.height;
+    
+    double width = (double) maxWidth;
+    double height = (width / originalWidth) * originalHeight;
+    
+    UIGraphicsBeginImageContextWithOptions(CGSizeMake(width, height), NO, 1.0);
+    [image drawInRect:CGRectMake(0, 0, width, height)];
+    
+    UIImage *scaledImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    
+    return scaledImage;
+}
+
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
     NSDictionary *_arguments;
     
@@ -139,6 +179,85 @@
         }
 
         result(finalFileName);
+        return;
+    }
+    else if([@"resizeImage" isEqualToString:call.method]) {
+        _arguments = call.arguments;
+        
+        int maxWidth = [[_arguments objectForKey:@"maxWidth"] intValue];
+        
+        NSString *fileArgument = [_arguments objectForKey:@"file"];
+    
+        NSURL *inFileUrl = [NSURL URLWithString:fileArgument];
+ 
+        NSString *fileExtension = @"_resize.jpg";
+        
+        NSString *fileName = [[fileArgument lastPathComponent] stringByDeletingPathExtension];
+        NSString *tempFileName =  [fileName stringByAppendingString:fileExtension];
+        NSString *finalFileName = [NSTemporaryDirectory() stringByAppendingPathComponent:tempFileName];
+        
+        NSString *path = [inFileUrl path];
+        NSData *data = [[NSFileManager defaultManager] contentsAtPath:path];
+        UIImage *img = [[UIImage alloc] initWithData:data];
+        img = [self normalizedImage:img];
+        
+        UIImage *image2 = [self scaledImage:img maxWidth:maxWidth ];
+        
+        NSData *imageData = UIImageJPEGRepresentation(image2, 0.9);
+        
+        if ([[NSFileManager defaultManager] createFileAtPath:finalFileName contents:imageData attributes:nil]) {
+            
+            NSDictionary *dict = @{ @"width" : @(lroundf(image2.size.width)),
+                                    @"height" : @(lroundf(image2.size.height)),
+                                    @"outputFileName": finalFileName};
+            
+            result(dict);
+            
+        } else {
+            result([FlutterError errorWithCode:@"resize_image"
+                                       message:@"File could not be saved"
+                                       details:nil]);
+        }
+        
+        return;
+        
+    }
+    else if([@"rotateImage" isEqualToString:call.method]) {
+        _arguments = call.arguments;
+        
+        NSString *fileArgument = [_arguments objectForKey:@"file"];
+        NSURL *inFileUrl = [NSURL URLWithString:fileArgument];
+        NSString *direction = [_arguments objectForKey:@"direction"];
+        int angle = 90;
+        if ([direction isEqualToString:@"left"])
+        {
+            angle = 270;
+        }
+        
+        NSString *fileExtension = @"_rotate.jpg";
+        
+        NSString *fileName = [[fileArgument lastPathComponent] stringByDeletingPathExtension];
+        NSString *tempFileName =  [fileName stringByAppendingString:fileExtension];
+        NSString *finalFileName = [NSTemporaryDirectory() stringByAppendingPathComponent:tempFileName];
+        
+        NSString *path = [inFileUrl path];
+        NSData *data = [[NSFileManager defaultManager] contentsAtPath:path];
+        
+        UIImage *img = [[UIImage alloc] initWithData:data];
+        img = [self normalizedImage:img];
+        
+        UIImage *image2 = [self imageRotatedByDegrees:img deg:angle];
+        
+        NSData *imageData = UIImageJPEGRepresentation(image2, 1.0);
+        
+        if ([[NSFileManager defaultManager] createFileAtPath:finalFileName contents:imageData attributes:nil]) {
+            result(finalFileName);
+        } else {
+            result([FlutterError errorWithCode:@"rotate_image"
+                                       message:@"File could not be saved"
+                                       details:nil]);
+        }
+        
         return;
     }
     else {
