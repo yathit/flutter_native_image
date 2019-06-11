@@ -83,6 +83,7 @@ class FlutterNativeImage {
 
     if (outputFileName != null && result.outputFileName != outputFileName) {
       await new File(result.outputFileName).copy(outputFileName);
+      new File(fileName).delete();
     }
     return result;
   }
