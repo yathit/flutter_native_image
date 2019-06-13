@@ -79,14 +79,7 @@ class FlutterNativeImage {
       'quality': 90,
     });
 
-    final result = new ResizeResult(map);
-
-    if (outputFileName != null && result.outputFileName != outputFileName) {
-      await new File(result.outputFileName).copy(outputFileName);
-      result.map['outputFileName'] = outputFileName;
-      new File(fileName).delete();
-    }
-    return result;
+    return ResizeResult(map);
   }
 }
 
