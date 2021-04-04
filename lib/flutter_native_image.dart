@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 class FlutterNativeImage {
   static const MethodChannel _channel = const MethodChannel('flutter_native_image');
 
-  static Future<String> get platformVersion => _channel.invokeMethod('getPlatformVersion');
+  static Future<String?> get platformVersion => _channel.invokeMethod('getPlatformVersion');
 
   static Future<File> compressImage(String fileName,
       {int percentage = 70,
@@ -26,7 +26,7 @@ class FlutterNativeImage {
 
   static Future<ImageProperties> getImageProperties(String fileName) async {
 
-    ImageOrientation decodeOrientation(int orientation) {
+    ImageOrientation decodeOrientation(int? orientation) {
       // For details, see: https://developer.android.com/reference/android/media/ExifInterface
       switch(orientation) {
         case 1: return ImageOrientation.normal;
@@ -42,7 +42,7 @@ class FlutterNativeImage {
     }
 
     var properties =
-        Map.from(await _channel.invokeMethod("getImageProperties", {'file': fileName}));
+        Map.from(await (_channel.invokeMethod("getImageProperties", {'file': fileName}) as FutureOr<Map<dynamic, dynamic>>));
     return new ImageProperties(width: properties["width"], height: properties["height"],
                                orientation: decodeOrientation(properties["orientation"]));
   }
@@ -71,16 +71,16 @@ class FlutterNativeImage {
   }
 
   static Future<ResizeResult> resizeImage(
-      String fileName, int width, {String outputFileName}) async {
-    Map map = await _channel.invokeMethod("resizeImage", {
+      String fileName, int width, {String? outputFileName}) async {
+    Map? map = await _channel.invokeMethod("resizeImage", {
       'file': fileName,
       'maxWidth': width,
       'output': outputFileName,
       'quality': 90,
     });
 
-    if (outputFileName?.isNotEmpty == true && map['outputFileName']!= outputFileName) {
-      await new File(map['outputFileName']).rename(outputFileName);
+    if (outputFileName?.isNotEmpty == true && map!['outputFileName']!= outputFileName) {
+      await new File(map['outputFileName']).rename(outputFileName!);
       map['outputFileName'] = outputFileName;
     }
 
@@ -89,13 +89,13 @@ class FlutterNativeImage {
 }
 
 class ResizeResult {
-  final Map map;
+  final Map? map;
 
   ResizeResult(this.map);
 
-  int get width => (map['width'] as num).round();
-  int get height => (map['height'] as num).round();
-  String get outputFileName => map['outputFileName'];
+  int get width => (map!['width'] as num).round();
+  int get height => (map!['height'] as num).round();
+  String? get outputFileName => map!['outputFileName'];
 
   @override
   String toString() => 'resize[$width x $height] $outputFileName';
@@ -116,8 +116,8 @@ enum ImageOrientation {
 }
 
 class ImageProperties {
-  int width;
-  int height;
+  int? width;
+  int? height;
   ImageOrientation orientation;
 
   ImageProperties({this.width = 0, this.height = 0, this.orientation = ImageOrientation.undefined});
